@@ -1,5 +1,5 @@
 import db from "../index";
-
+console.log(process.env.DATABASE_URL);
 import { hash, compare } from "bcryptjs";
 const users = [
   { id: "1", name: "johnDoe", email: "john@gmail.com", password: "123456" },
