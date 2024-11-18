@@ -1,0 +1,28 @@
+type User {
+  id: String
+  name: String
+  email: String
+}
+type orderItems {
+  id: String
+  productId: String
+  quantity: Int
+  product: Product
+}
+type Order {
+  id: String
+  userId: String
+  orderItems: [orderItems]
+}
+type Product {
+  id: String
+  name: String
+  price: String
+  inStock: Boolean
+}
+type Query {
+  userDetails(id: String!): User
+  allOrderDetails(userId: String): [Order]
+  orderDetails(orderId: String): Order
+  productDetails(prodId: String): Product
+}

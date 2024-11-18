@@ -61,7 +61,11 @@ orderRouter.post("/order-details", async (req, res) => {
         id: orderId,
       },
       include: {
-        orderItems: true,
+        orderItems: {
+          include: {
+            product: true,
+          },
+        },
       },
     });
     if (orderDetails) {
