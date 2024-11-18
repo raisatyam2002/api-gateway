@@ -7,6 +7,7 @@ import { fileURLToPath } from "url";
 import path from "path";
 import { dirname } from "path";
 import axios from "axios";
+import { ApolloError, UserInputError } from "apollo-server-errors";
 const __filename = fileURLToPath(import.meta.url);
 console.log(__filename);
 const __dirname = dirname(__filename);
@@ -66,6 +67,40 @@ const resolvers = {
             catch (error) {
                 console.error("error while fetching product details");
                 throw new Error("Failed to get product details");
+            }
+        },
+        userLogin: async (_, args) => {
+            try {
+                if (!args.email || !args.password) {
+                    throw new UserInputError("Please provide both email and password.");
+                }
+                const res = await axios.post("http://localhost:5002/user-api/login", {
+                    email: args.email,
+                    password: args.password,
+                });
+                console.log("userDetails ", res.data);
+                if (res.data.success) {
+                    console.log("userDetails ", res.data.id);
+                    return res.data;
+                }
+                else {
+                    console.error("Login failed:", res.data.message);
+                    throw new ApolloError(res.data.message, "LOGIN_FAILED");
+                }
+            }
+            catch (error) {
+                if (error.response) {
+                    console.error("API error response:", error.response.data);
+                    throw new ApolloError(error.response.data?.message || "Server responded with an error", "API_ERROR");
+                }
+                else if (error.request) {
+                    console.error("API error, no response received:", error.request);
+                    throw new ApolloError("Unable to connect to the login server. Please try again later.", "NO_RESPONSE");
+                }
+                else {
+                    console.error("Unexpected error:", error.message);
+                    throw new ApolloError("An unexpected error occurred", "UNEXPECTED_ERROR");
+                }
             }
         },
     },

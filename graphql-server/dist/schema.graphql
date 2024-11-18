@@ -25,4 +25,5 @@ type Query {
   allOrderDetails(userId: String): [Order]
   orderDetails(orderId: String): Order
   productDetails(prodId: String): Product
+  userLogin(email: String, password: String): User
 }
