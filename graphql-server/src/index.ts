@@ -12,10 +12,12 @@ import jwt from "jsonwebtoken";
 import dotenv from "dotenv";
 import cookieParser from "cookie-parser";
 import cors from "cors";
+import { createClient } from "redis";
 dotenv.config();
 const __filename = fileURLToPath(import.meta.url);
 console.log(__filename);
-
+const client = createClient();
+client.on("error", (err) => console.log("Redis Client Error", err));
 const __dirname = dirname(__filename);
 console.log(__dirname);
 
@@ -23,18 +25,40 @@ const typeDefs = fs.readFileSync(
   path.join(__dirname, "./schema.graphql"),
   "utf-8"
 );
+async function verifyToken(jwtGraphqlToken: string) {
+  const isVerify = jwt.verify(jwtGraphqlToken, process.env.jwt_secret);
+  console.log("jwt verify ", isVerify);
 
+  return isVerify;
+}
+async function addSessionOnRedis(jwtGraphqlToken: string) {
+  const value = jwt.verify(jwtGraphqlToken, process.env.jwt_secret);
+  const stringValue = typeof value === "string" ? value : JSON.stringify(value);
+  await client.set(jwtGraphqlToken, stringValue);
+}
+async function checkSessionOnRedis(jwtGraphqlToken: string) {
+  const userId = await client.get(jwtGraphqlToken);
+  return userId;
+}
 const resolvers = {
   Query: {
     userDetails: async (_, args, { req }) => {
       try {
         const cookies = req.cookies;
         const jwtGraphqlToken = cookies["jwtGraphqlToken"];
+        if (!jwtGraphqlToken || !verifyToken(jwtGraphqlToken)) {
+          throw new ApolloError("User not logged in");
+        }
         if (jwtGraphqlToken) {
           console.log("JWT GraphQL Token:", jwtGraphqlToken);
         } else {
           console.error("JWT GraphQL Token not found in cookies");
         }
+        const userId = await checkSessionOnRedis(jwtGraphqlToken);
+        if (userId) {
+          console.log("user exist on redis ", userId);
+        }
+        await addSessionOnRedis(jwtGraphqlToken);
         const res = await axios.post(
           "http://localhost:5002/user-api/user-details",
           { id: args.id }
@@ -122,6 +146,7 @@ const resolvers = {
             secure: process.env.NODE_ENV === "production",
             maxAge: 24 * 60 * 60 * 1000, // 1 day
           });
+
           return response.data;
         } else {
           console.error("Login failed:", response.data.message);
@@ -178,7 +203,18 @@ app.get("/check", (req, res) => {
 
 // Start the Express server
 const PORT = 4000;
-app.listen(PORT, () => {
-  console.log(`🚀 Server is running at http://localhost:${PORT}/graphql`);
-  console.log(`Express route is available at http://localhost:${PORT}/check`);
-});
+async function startServer() {
+  try {
+    await client.connect();
+    console.log("Connected to Redis");
+    app.listen(PORT, () => {
+      console.log(`🚀 Server is running at http://localhost:${PORT}/graphql`);
+      console.log(
+        `Express route is available at http://localhost:${PORT}/check`
+      );
+    });
+  } catch (error) {
+    console.log("error while starting server ", error.message);
+  }
+}
+startServer();
