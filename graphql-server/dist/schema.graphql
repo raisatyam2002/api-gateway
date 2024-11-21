@@ -21,7 +21,7 @@ type Product {
   inStock: Boolean
 }
 type Query {
-  userDetails(id: String!): User
+  userDetails: User
   allOrderDetails(userId: String): [Order]
   orderDetails(orderId: String): Order
   productDetails(prodId: String): Product
