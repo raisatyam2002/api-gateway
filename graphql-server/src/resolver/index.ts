@@ -6,6 +6,9 @@ import {
   checkSessionOnRedis,
 } from "../redis/index";
 import { isUserValid } from "../middleware/index";
+import { getUserDetails } from "../microservice-api-call/user-service";
+import { getAllOrderDetails } from "../microservice-api-call/order-service";
+import { getProductDetails } from "../microservice-api-call/product-service";
 import axios from "axios";
 
 const resolvers = {
@@ -32,84 +35,27 @@ const resolvers = {
         if (!userId) {
           throw new Error("user not login....login again");
         }
-        let userData: any;
-        let allOrderDetails: any;
-        let orderDetails: any;
-        let allProducts: any;
-        let fallbackMessages: any = [];
+        let data = {
+          userData: null,
+          allOrderDetails: [],
+          allProducts: [],
+          fallbackMessages: [],
+        };
         // user micro-service
-        try {
-          const res = await axios.post(
-            "http://localhost:5002/user-api/user-details",
-            { id: userId }
-          );
-          console.log("res data ", res.data);
-          if (res.data.success) {
-            userData = res.data.userDetails;
-            console.log("userData ", userData);
-          } else {
-            throw new Error(res.data.message);
-          }
-        } catch (error) {
-          console.log("error in getting user data ", error.message);
-          fallbackMessages.push({
-            service: "user-service",
-            message:
-              error.message ||
-              "An unexpected error occurred in the user service.",
-            status: "DOWN",
-          });
-          console.log("fall back ", fallbackMessages);
-        }
-        //order-microservice
-        try {
-          const res = await axios.post(
-            "http://localhost:5000/order-api/all-order-details",
-            {
-              userId: userId,
-            }
-          );
-          if (res.data.success) {
-            allOrderDetails = res.data.orderDetails;
-            console.log("all order details ", allOrderDetails);
-          } else {
-            throw new Error(res.data.message);
-          }
-        } catch (error) {
-          console.log("error in order service ", error);
-          fallbackMessages.push({
-            service: "order-service",
-            message:
-              error.message ||
-              "An unexpected error occurred in the order service.",
-            status: "DOWN", // Example: "DOWN", "TIMEOUT", or other relevant statuses
-          });
-        }
+        await getUserDetails(userId, data);
+        //order micro-services
+        await getAllOrderDetails(userId, data);
         //product-microservices
-        try {
-          const res = await axios.get(
-            "http://localhost:5001/product-api/all-product"
-          );
-          if (res.data.success) {
-            allProducts = res.data.products;
-          } else {
-            throw new Error(res.data.message);
-          }
-        } catch (error) {
-          console.log("error in product service ", error);
-          fallbackMessages.push({
-            service: "product-service",
-            message:
-              error.message ||
-              "An unexpected error occurred in the product service.",
-            status: "DOWN", // Example: "DOWN", "TIMEOUT", or other relevant statuses
-          });
-        }
+        await getProductDetails(data);
+        console.log(data.userData);
+        console.log(data.allOrderDetails);
+        console.log(data.allProducts);
+
         return {
-          userData: userData || null,
-          allOrderDetails: allOrderDetails || [],
-          allProducts: allProducts || [],
-          fallbackMessages,
+          userData: data.userData || null,
+          allOrderDetails: data.allOrderDetails || [],
+          allProducts: data.allProducts || [],
+          fallbackMessages: data.fallbackMessages,
         };
       } catch (error) {
         console.log("error while gettting user dashboard details ", error);
