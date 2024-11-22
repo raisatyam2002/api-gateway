@@ -5,75 +5,29 @@ import {
   verifyToken,
   checkSessionOnRedis,
 } from "../redis/index";
-import axios from "axios";
 import { isUserValid } from "../middleware/index";
+import axios from "axios";
 
 const resolvers = {
   Query: {
-    userDetails: withMiddleware(isUserValid, async (_, { req }) => {
+    userDetails: async (_, __, { req }) => {
       try {
+        const userId = await isUserValid(req);
+        if (!userId) {
+          throw new Error("user not login....login again");
+        }
         const res = await axios.post(
           "http://localhost:5002/user-api/user-details",
-          { id: req.userId }
+          { id: userId }
         );
         return res.data.userDetails;
       } catch (error) {
         console.error("Error fetching user details:", error);
-        throw new ApolloError("Failed to fetch user details");
-      }
-    }),
-    allOrderDetails: async (_, args) => {
-      try {
-        const res = await axios.post(
-          "http://localhost:5000/order-api/all-order-details",
-          {
-            userId: args.userId,
-          }
-        );
-
-        return res.data.orderDetails;
-      } catch (error) {
-        console.error("Error fetching all Order details:", error);
-        throw new Error("Failed to fetch Order details");
+        throw new Error("Failed to fetch user details");
       }
     },
-    orderDetails: async (_, args) => {
-      try {
-        const res = await axios.post(
-          "http://localhost:5000/order-api/order-details",
-          {
-            orderId: args.orderId,
-          }
-        );
-        console.log(res.data.orderDetails);
-        // console.log(res.data.orderDetails.orderItems);
-
-        return res.data.orderDetails;
-      } catch (error) {
-        console.error("Error fetching all Order details:", error);
-        throw new Error("Failed to fetch Order details");
-      }
-    },
-    productDetails: async (_, args) => {
-      try {
-        const res = await axios.post(
-          "http://localhost:5001/product-api/product-details",
-          {
-            prodId: args.prodId,
-          }
-        );
-        if (res.data.success) {
-          return res.data.productDetails;
-        } else {
-          console.error(res.data.message);
-          return null;
-        }
-      } catch (error) {
-        console.error("error while fetching product details");
-        throw new Error("Failed to get product details");
-      }
-    },
-
+  },
+  Mutation: {
     userLogin: async (_, args, { res }) => {
       try {
         if (!args.email || !args.password) {
@@ -125,6 +79,61 @@ const resolvers = {
             "UNEXPECTED_ERROR"
           );
         }
+      }
+    },
+    allOrderDetails: async (_, __, { req }) => {
+      try {
+        const userId = await isUserValid(req);
+        console.log("userId ", userId);
+        if (!userId) {
+          throw new Error("user not login....login again");
+        }
+        const res = await axios.post(
+          "http://localhost:5000/order-api/all-order-details",
+          {
+            userId: userId,
+          }
+        );
+        return res.data.orderDetails;
+      } catch (error) {
+        console.error("Error fetching all Order details:", error);
+        throw new Error("Failed to fetch Order details");
+      }
+    },
+    orderDetails: async (_, args) => {
+      try {
+        const res = await axios.post(
+          "http://localhost:5000/order-api/order-details",
+          {
+            orderId: args.orderId,
+          }
+        );
+        console.log(res.data.orderDetails);
+        // console.log(res.data.orderDetails.orderItems);
+
+        return res.data.orderDetails;
+      } catch (error) {
+        console.error("Error fetching all Order details:", error);
+        throw new Error("Failed to fetch Order details");
+      }
+    },
+    productDetails: async (_, args) => {
+      try {
+        const res = await axios.post(
+          "http://localhost:5001/product-api/product-details",
+          {
+            prodId: args.prodId,
+          }
+        );
+        if (res.data.success) {
+          return res.data.productDetails;
+        } else {
+          console.error(res.data.message);
+          return null;
+        }
+      } catch (error) {
+        console.error("error while fetching product details");
+        throw new Error("Failed to get product details");
       }
     },
   },

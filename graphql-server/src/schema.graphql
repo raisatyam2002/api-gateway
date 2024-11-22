@@ -22,8 +22,12 @@ type Product {
 }
 type Query {
   userDetails: User
+
+  # userLogin(email: String, password: String): User
+}
+type Mutation {
+  userLogin(email: String, password: String): User
   allOrderDetails(userId: String): [Order]
   orderDetails(orderId: String): Order
   productDetails(prodId: String): Product
-  userLogin(email: String, password: String): User
 }

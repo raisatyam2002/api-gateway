@@ -1,21 +1,16 @@
-import { NextFunction, Request, Response } from "express";
+import { Request, Response } from "express";
 import {
   verifyToken,
   checkSessionOnRedis,
   addSessionOnRedis,
 } from "../redis/index";
 import { ApolloError } from "apollo-server-errors";
-interface customRequest extends Request {
-  userId: string;
-}
-export async function isUserValid(
-  req: customRequest,
-  res: Response,
-  next: NextFunction
-) {
+
+export async function isUserValid(req) {
   try {
     const cookies = req.cookies;
     const jwtGraphqlToken = cookies["jwtGraphqlToken"];
+
     if (!jwtGraphqlToken || !(await verifyToken(jwtGraphqlToken))) {
       throw new ApolloError("User not logged in");
     }
@@ -26,10 +21,9 @@ export async function isUserValid(
     if (!userId) {
       userId = await verifyToken(jwtGraphqlToken);
     }
-    req.userId = userId;
-    next();
+    if (userId) return userId;
+    else return null;
   } catch (error) {
     console.log("error in midddle ware ", error);
-    next(error);
   }
 }
