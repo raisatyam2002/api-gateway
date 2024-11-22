@@ -32,28 +32,34 @@ const resolvers = {
         if (!userId) {
           throw new Error("user not login....login again");
         }
-        let userData;
-        let allOrderDetails;
-        let orderDetails;
-        let allProducts;
-        let fallbackmessages = [];
+        let userData: any;
+        let allOrderDetails: any;
+        let orderDetails: any;
+        let allProducts: any;
+        let fallbackMessages: any = [];
         // user micro-service
         try {
           const res = await axios.post(
             "http://localhost:5002/user-api/user-details",
             { id: userId }
           );
+          console.log("res data ", res.data);
           if (res.data.success) {
-            userData = res.data.user;
+            userData = res.data.userDetails;
+            console.log("userData ", userData);
           } else {
             throw new Error(res.data.message);
           }
         } catch (error) {
-          console.log("error in getting user data ", error);
-          fallbackmessages.push({
-            service: "user service",
-            message: error.message,
+          console.log("error in getting user data ", error.message);
+          fallbackMessages.push({
+            service: "user-service",
+            message:
+              error.message ||
+              "An unexpected error occurred in the user service.",
+            status: "DOWN",
           });
+          console.log("fall back ", fallbackMessages);
         }
         //order-microservice
         try {
@@ -65,14 +71,18 @@ const resolvers = {
           );
           if (res.data.success) {
             allOrderDetails = res.data.orderDetails;
+            console.log("all order details ", allOrderDetails);
           } else {
             throw new Error(res.data.message);
           }
         } catch (error) {
           console.log("error in order service ", error);
-          fallbackmessages.push({
+          fallbackMessages.push({
             service: "order-service",
-            message: error.message,
+            message:
+              error.message ||
+              "An unexpected error occurred in the order service.",
+            status: "DOWN", // Example: "DOWN", "TIMEOUT", or other relevant statuses
           });
         }
         //product-microservices
@@ -87,14 +97,22 @@ const resolvers = {
           }
         } catch (error) {
           console.log("error in product service ", error);
-          fallbackmessages.push({
-            service: "product service",
-            message: error.message,
+          fallbackMessages.push({
+            service: "product-service",
+            message:
+              error.message ||
+              "An unexpected error occurred in the product service.",
+            status: "DOWN", // Example: "DOWN", "TIMEOUT", or other relevant statuses
           });
         }
+        return {
+          userData: userData || null,
+          allOrderDetails: allOrderDetails || [],
+          allProducts: allProducts || [],
+          fallbackMessages,
+        };
       } catch (error) {
         console.log("error while gettting user dashboard details ", error);
-
         throw new ApolloError(
           "errro while getting user dashboard ",
           error.message
@@ -108,7 +126,6 @@ const resolvers = {
         if (!args.email || !args.password) {
           throw new UserInputError("Please provide both email and password.");
         }
-
         const response = await axios.post(
           "http://localhost:5002/user-api/login",
           {
@@ -116,12 +133,16 @@ const resolvers = {
             password: args.password,
           }
         );
-        console.log("userDetails ", response.data);
+        // console.log("response data", response.data);
+        // console.log("userDetails ", response.data.user.id);
 
         if (response.data.success) {
-          console.log("userDetails ", response.data.id);
-          console.log("jwt secret ", process.env.jwt_secret);
-          const token = jwt.sign(response.data.id, process.env.jwt_secret);
+          const userID = response.data.user.id;
+          //   console.log("userDetails ", response.data.user.id);
+          //   console.log("jwt secret ", process.env.jwt_secret);
+          console.log("userID "), userID;
+          const token = jwt.sign(userID, process.env.jwt_secret);
+
           console.log("jwt ", token);
           res.cookie("jwtGraphqlToken", token, {
             httpOnly: true,
@@ -129,7 +150,8 @@ const resolvers = {
             maxAge: 24 * 60 * 60 * 1000, // 1 day
           });
           await addSessionOnRedis(token);
-          return response.data;
+
+          return response.data.user;
         } else {
           console.error("Login failed:", response.data.message);
           throw new ApolloError(response.data.message, "LOGIN_FAILED");
@@ -185,7 +207,6 @@ const resolvers = {
         );
         console.log(res.data.orderDetails);
         // console.log(res.data.orderDetails.orderItems);
-
         return res.data.orderDetails;
       } catch (error) {
         console.error("Error fetching all Order details:", error);
@@ -214,14 +235,4 @@ const resolvers = {
   },
 };
 
-function withMiddleware(middleware, resolver) {
-  return async (parent, args, context, info) => {
-    try {
-      await middleware(context.req, context.res);
-      return resolver(parent, args, context, info);
-    } catch (error) {
-      throw error;
-    }
-  };
-}
 export default resolvers;
