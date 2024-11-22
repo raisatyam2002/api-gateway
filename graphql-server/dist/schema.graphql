@@ -1,33 +1,53 @@
-type User {
+type user {
   id: String
   name: String
   email: String
+  addresses: [address]
+}
+type address {
+  id: String
+  street: String
+  city: String
+  country: String
 }
 type orderItems {
   id: String
   productId: String
   quantity: Int
-  product: Product
+  product: product
 }
-type Order {
+type order {
   id: String
   userId: String
   orderItems: [orderItems]
 }
-type Product {
+type product {
   id: String
   name: String
   price: String
   inStock: Boolean
 }
-type Query {
-  userDetails: User
+type fallbackMessage {
+  service: String!
+  message: String!
+  status: String! # Status field to provide additional context (e.g., DOWN, TIMEOUT)
+}
+type userDashboardData {
+  userData: user
+  allOrderDetails: [order]
+  orderDetails: order
+  allProducts: [product]
+  fallbackMessages: [fallbackMessage]
+}
 
+type Query {
+  userDetails: user
+  userDashboard: userDashboardData
   # userLogin(email: String, password: String): User
 }
 type Mutation {
-  userLogin(email: String, password: String): User
-  allOrderDetails(userId: String): [Order]
-  orderDetails(orderId: String): Order
-  productDetails(prodId: String): Product
+  userLogin(email: String, password: String): user
+  allOrderDetails(userId: String): [order]
+  orderDetails(orderId: String): order
+  productDetails(prodId: String): product
 }

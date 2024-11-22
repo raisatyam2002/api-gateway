@@ -26,6 +26,81 @@ const resolvers = {
         throw new Error("Failed to fetch user details");
       }
     },
+    userDashboard: async (_, __, { req }) => {
+      try {
+        const userId = await isUserValid(req);
+        if (!userId) {
+          throw new Error("user not login....login again");
+        }
+        let userData;
+        let allOrderDetails;
+        let orderDetails;
+        let allProducts;
+        let fallbackmessages = [];
+        // user micro-service
+        try {
+          const res = await axios.post(
+            "http://localhost:5002/user-api/user-details",
+            { id: userId }
+          );
+          if (res.data.success) {
+            userData = res.data.user;
+          } else {
+            throw new Error(res.data.message);
+          }
+        } catch (error) {
+          console.log("error in getting user data ", error);
+          fallbackmessages.push({
+            service: "user service",
+            message: error.message,
+          });
+        }
+        //order-microservice
+        try {
+          const res = await axios.post(
+            "http://localhost:5000/order-api/all-order-details",
+            {
+              userId: userId,
+            }
+          );
+          if (res.data.success) {
+            allOrderDetails = res.data.orderDetails;
+          } else {
+            throw new Error(res.data.message);
+          }
+        } catch (error) {
+          console.log("error in order service ", error);
+          fallbackmessages.push({
+            service: "order-service",
+            message: error.message,
+          });
+        }
+        //product-microservices
+        try {
+          const res = await axios.get(
+            "http://localhost:5001/product-api/all-product"
+          );
+          if (res.data.success) {
+            allProducts = res.data.products;
+          } else {
+            throw new Error(res.data.message);
+          }
+        } catch (error) {
+          console.log("error in product service ", error);
+          fallbackmessages.push({
+            service: "product service",
+            message: error.message,
+          });
+        }
+      } catch (error) {
+        console.log("error while gettting user dashboard details ", error);
+
+        throw new ApolloError(
+          "errro while getting user dashboard ",
+          error.message
+        );
+      }
+    },
   },
   Mutation: {
     userLogin: async (_, args, { res }) => {

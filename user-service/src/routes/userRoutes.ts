@@ -16,6 +16,9 @@ userRouter.post("/user-details", async (req, res) => {
       where: {
         id: id,
       },
+      include: {
+        addresses: true,
+      },
     });
     if (userDetails) {
       return res.status(201).json({
@@ -63,7 +66,7 @@ userRouter.post("/login", async (req, res) => {
         return res.status(201).json({
           success: true,
           message: "user details fetched successfully",
-          id: user.id,
+          user: user,
         });
       } else {
         return res.status(201).json({
