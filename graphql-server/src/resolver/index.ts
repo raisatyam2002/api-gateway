@@ -9,7 +9,9 @@ import { isUserValid } from "../middleware/index";
 import { getUserDetails } from "../microservice-api-call/user-service";
 import { getAllOrderDetails } from "../microservice-api-call/order-service";
 import { getProductDetails } from "../microservice-api-call/product-service";
+import { circuitBreaker } from "../circuit-breaker/index";
 import axios from "axios";
+import { ClientClosedError } from "redis";
 
 const resolvers = {
   Query: {
@@ -42,14 +44,35 @@ const resolvers = {
           fallbackMessages: [],
         };
         // user micro-service
-        await getUserDetails(userId, data);
+        await circuitBreaker(
+          "user-service",
+          getUserDetails,
+          userId,
+          data,
+          "userData"
+        );
+        // await getUserDetails(userId, data);
         //order micro-services
-        await getAllOrderDetails(userId, data);
+        await circuitBreaker(
+          "order-service",
+          getAllOrderDetails,
+          userId,
+          data,
+          "allOrderDetails"
+        );
+        // await getAllOrderDetails(userId, data);
         //product-microservices
-        await getProductDetails(data);
-        console.log(data.userData);
-        console.log(data.allOrderDetails);
-        console.log(data.allProducts);
+        await circuitBreaker(
+          "product-service",
+          getProductDetails,
+          userId,
+          data,
+          "allProducts"
+        );
+        // await getProductDetails(userId, data);
+        // console.log(data.userData);
+        // console.log(data.allOrderDetails);
+        // console.log(data.allProducts);
 
         return {
           userData: data.userData || null,

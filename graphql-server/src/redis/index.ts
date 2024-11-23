@@ -37,4 +37,19 @@ export async function checkSessionOnRedis(jwtGraphqlToken: string) {
     throw new Error("errow while checking session on redis");
   }
 }
+export async function initializeCircuitBreaker(service) {
+  try {
+    await client.hSet(service, {
+      state: "close",
+      failure_count: 0,
+      last_failureTime: Date.now(),
+    });
+  } catch (error) {
+    console.log(
+      "error in redis while setting circuit-breaker hset ",
+      error.message
+    );
+    throw new Error(error.message);
+  }
+}
 export default client;
