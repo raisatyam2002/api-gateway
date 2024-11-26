@@ -11,6 +11,7 @@ import cookieParser from "cookie-parser";
 import cors from "cors";
 import resolvers from "./resolver/index.js";
 import client from "./redis/index.js";
+import { register, Counter } from "prom-client";
 dotenv.config();
 const __filename = fileURLToPath(import.meta.url);
 console.log(__filename);
@@ -23,9 +24,72 @@ const typeDefs = fs.readFileSync(
   "utf-8"
 );
 const app = express();
+app.use(express.json());
+const graphqlRequestCount = new Counter({
+  name: "graphql_request_count",
+  help: "Total number of GraphQL requests",
+  labelNames: ["method", "route", "status_code"],
+});
+app.use((req, res, next) => {
+  const startTime = Date.now();
+  //   console.log("req body ", req.body);
+  const graphqlOperation = req.body?.operationName || "Unknown Operation";
+  //   const graphqlQuery = req.body?.query || "Unknown Query";
+  res.on("finish", () => {
+    const endTime = Date.now();
+    console.log(`Request took ${endTime - startTime}ms`);
+    const statusCode = res.statusCode;
+    graphqlRequestCount.inc({
+      method: req.method,
+      route: graphqlOperation,
+      status_code: res.statusCode,
+    });
+    console.log("GraphQL Operation:", graphqlOperation);
+    console.log("Status Code:", statusCode);
+    // console.log("GraphQL Query:", graphqlQuery);
+  });
+  next();
+});
+app.get("/metrics", async (req, res) => {
+  res.set("Content-Type", register.contentType);
+  res.end(await register.metrics());
+});
 const server = new ApolloServer({
   typeDefs,
   resolvers,
+  plugins: [
+    {
+      async requestDidStart() {
+        return {
+          async willSendResponse({ response }) {
+            // console.log("Full Response:", JSON.stringify(response, null, 2));
+
+            // Check for errors in the body
+            if (
+              response.body.kind === "single" &&
+              response.body.singleResult.errors
+            ) {
+              const errors = response.body.singleResult.errors;
+              console.log("Errors:", errors);
+
+              const firstError = errors[0];
+
+              // Set HTTP status code based on the first error
+              if (firstError.extensions.code === "UNAUTHENTICATED") {
+                response.http.status = 401; // Unauthorized
+              } else if (firstError.extensions.code === "FORBIDDEN") {
+                response.http.status = 403; // Forbidden
+              } else {
+                response.http.status = 400; // Bad Request
+              }
+            } else {
+              console.log("No errors in the response.");
+            }
+          },
+        };
+      },
+    },
+  ],
 });
 await server.start();
 app.use(

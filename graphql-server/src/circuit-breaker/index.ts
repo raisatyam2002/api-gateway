@@ -1,3 +1,4 @@
+import { getUserDetails } from "../microservice-api-call/user-service";
 import client, { initializeCircuitBreaker } from "../redis/index";
 export async function circuitBreaker(
   service,
@@ -8,6 +9,7 @@ export async function circuitBreaker(
 ) {
   try {
     const ifCircuitBreakerExist = await client.exists(service);
+
     if (!ifCircuitBreakerExist) {
       console.log(
         "setting ",

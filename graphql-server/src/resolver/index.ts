@@ -1,25 +1,23 @@
-import { ApolloError, UserInputError } from "apollo-server-errors";
-import jwt from "jsonwebtoken";
 import {
-  addSessionOnRedis,
-  verifyToken,
-  checkSessionOnRedis,
-} from "../redis/index";
-import { isUserValid } from "../middleware/index";
-import { getUserDetails } from "../microservice-api-call/user-service";
-import { getAllOrderDetails } from "../microservice-api-call/order-service";
-import { getProductDetails } from "../microservice-api-call/product-service";
-import { circuitBreaker } from "../circuit-breaker/index";
+  ApolloError,
+  UserInputError,
+  AuthenticationError,
+} from "apollo-server-errors";
+import jwt from "jsonwebtoken";
+import { addSessionOnRedis } from "../redis/index.js";
+import { isUserValid } from "../middleware/index.js";
+import { getUserDetails } from "../microservice-api-call/user-service.js";
+import { getAllOrderDetails } from "../microservice-api-call/order-service.js";
+import { getProductDetails } from "../microservice-api-call/product-service.js";
+import { circuitBreaker } from "../circuit-breaker/index.js";
 import axios from "axios";
-import { ClientClosedError } from "redis";
-
 const resolvers = {
   Query: {
     userDetails: async (_, __, { req }) => {
       try {
         const userId = await isUserValid(req);
         if (!userId) {
-          throw new Error("user not login....login again");
+          throw new AuthenticationError("user not login....login again");
         }
         const res = await axios.post(
           "http://localhost:5002/user-api/user-details",
@@ -73,7 +71,6 @@ const resolvers = {
         // console.log(data.userData);
         // console.log(data.allOrderDetails);
         // console.log(data.allProducts);
-
         return {
           userData: data.userData || null,
           allOrderDetails: data.allOrderDetails || [],
@@ -82,10 +79,7 @@ const resolvers = {
         };
       } catch (error) {
         console.log("error while gettting user dashboard details ", error);
-        throw new ApolloError(
-          "errro while getting user dashboard ",
-          error.message
-        );
+        throw error;
       }
     },
   },
@@ -104,14 +98,12 @@ const resolvers = {
         );
         // console.log("response data", response.data);
         // console.log("userDetails ", response.data.user.id);
-
         if (response.data.success) {
           const userID = response.data.user.id;
           //   console.log("userDetails ", response.data.user.id);
           //   console.log("jwt secret ", process.env.jwt_secret);
           console.log("userID "), userID;
           const token = jwt.sign(userID, process.env.jwt_secret);
-
           console.log("jwt ", token);
           res.cookie("jwtGraphqlToken", token, {
             httpOnly: true,
@@ -119,7 +111,6 @@ const resolvers = {
             maxAge: 24 * 60 * 60 * 1000, // 1 day
           });
           await addSessionOnRedis(token);
-
           return response.data.user;
         } else {
           console.error("Login failed:", response.data.message);
@@ -203,5 +194,4 @@ const resolvers = {
     },
   },
 };
-
 export default resolvers;
