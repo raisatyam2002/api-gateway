@@ -1,6 +1,5 @@
 import axios from "axios";
-export async function getAllOrderDetails(userId, data) {
-    
+export async function getAllOrderDetails(userId: string, data: any) {
   try {
     const res = await axios.post(process.env.order_api + "/all-order-details", {
       userId: userId,
@@ -11,7 +10,7 @@ export async function getAllOrderDetails(userId, data) {
     } else {
       throw new Error(res.data.message);
     }
-  } catch (error) {
+  } catch (error: any) {
     console.log("error in order service ", error);
     data.fallbackMessages.push({
       service: "order-service",

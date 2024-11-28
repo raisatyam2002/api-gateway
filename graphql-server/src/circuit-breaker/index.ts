@@ -1,5 +1,9 @@
-import { getUserDetails } from "../microservice-api-call/user-service";
 import client, { initializeCircuitBreaker } from "../redis/index";
+import {
+  microServiceOpenState,
+  microServiceCloseState,
+  microServiceHalfOpenState,
+} from "../promethues_functions/index";
 export async function circuitBreaker(
   service,
   microserviceApiCall,
@@ -9,7 +13,6 @@ export async function circuitBreaker(
 ) {
   try {
     const ifCircuitBreakerExist = await client.exists(service);
-
     if (!ifCircuitBreakerExist) {
       console.log(
         "setting ",
@@ -19,7 +22,7 @@ export async function circuitBreaker(
       );
       await initializeCircuitBreaker(service);
     }
-    const { state, failure_count, last_failureTime } = await client.hGetAll(
+    var { state, failure_count, last_failureTime } = await client.hGetAll(
       service
     );
     console.log(
@@ -35,7 +38,7 @@ export async function circuitBreaker(
       console.log("checking open");
       if (timeDiff > 60000) {
         await microserviceApiCall(userId, data);
-        if (data[serviceData]) {
+        if (data[serviceData].length >= 0) {
           console.log("cheking flow 1");
           await client.hSet(service, {
             state: "half-open",
@@ -53,9 +56,9 @@ export async function circuitBreaker(
         }
       }
     } else if (state == "half-open") {
-      console.log("checking hald-open");
+      console.log("checking half-open");
       await microserviceApiCall(userId, data);
-      if (data[serviceData]) {
+      if (data[serviceData].length >= 0) {
         await client.hSet(service, {
           state: "close",
           failure_count: "0",
@@ -80,8 +83,10 @@ export async function circuitBreaker(
     } else if (state == "close") {
       console.log("checking close");
       await microserviceApiCall(userId, data);
-      const new_failure_count = Number(failure_count) + 1;
-      if (!data[serviceData]) {
+      console.log("data ", data[serviceData]);
+      if (data[serviceData].length === 0) {
+        console.log("debug 1");
+        const new_failure_count = Number(failure_count) + 1;
         if (new_failure_count > 3) {
           await client.hSet(service, {
             state: "open",
@@ -95,8 +100,42 @@ export async function circuitBreaker(
             last_failureTime: last_failureTime,
           });
         }
+      } else {
+        console.log("debug 2");
+        await client.hSet(service, {
+          state: "close",
+          failure_count: 0,
+          last_failureTime: last_failureTime,
+        });
       }
     }
+    var { state, failure_count, last_failureTime } = await client.hGetAll(
+      service
+    );
+    if (state == "open") {
+      microServiceOpenState.inc({
+        service: service,
+        status_code: "500",
+        state: state,
+      });
+    } else if (state == "close") {
+      microServiceCloseState.inc({
+        service: service,
+        status_code: "200",
+      });
+    } else if (state == "half-open") {
+      microServiceHalfOpenState.inc({
+        service: service,
+        status_code: "200",
+      });
+    }
+
+    console.log("state ", state);
+    console.log("failure count ", failure_count);
+    console.log(
+      service,
+      "circuite breaker end -------------------------------"
+    );
     console.log(
       service,
       "circuite breaker end -------------------------------"

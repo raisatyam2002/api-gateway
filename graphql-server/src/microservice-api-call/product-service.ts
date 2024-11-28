@@ -1,5 +1,5 @@
 import axios from "axios";
-export async function getProductDetails(userId, data) {
+export async function getProductDetails(userId: string, data: any) {
   try {
     const res = await axios.get(process.env.product_api + "/all-product");
     if (res.data.success) {
@@ -8,7 +8,7 @@ export async function getProductDetails(userId, data) {
     } else {
       throw new Error(res.data.message);
     }
-  } catch (error) {
+  } catch (error: any) {
     console.log("error in product service ", error);
     data.fallbackMessages.push({
       service: "product-service",

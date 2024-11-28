@@ -1,9 +1,9 @@
 import { createClient } from "redis";
 import jwt from "jsonwebtoken";
 const client = createClient();
-export async function verifyToken(jwtGraphqlToken: string) {
+export async function verifyToken(jwtGraphqlToken) {
   try {
-    const userId = jwt.verify(jwtGraphqlToken, process.env.jwt_secret);
+    const userId = jwt.verify(jwtGraphqlToken, process.env.jwt_secret || "");
     console.log("jwt verify ", userId);
     const userIdValue =
       typeof userId === "string" ? userId : JSON.stringify(userId);
@@ -13,9 +13,9 @@ export async function verifyToken(jwtGraphqlToken: string) {
     throw new Error("error while verifying token ");
   }
 }
-export async function addSessionOnRedis(jwtGraphqlToken: string) {
+export async function addSessionOnRedis(jwtGraphqlToken) {
   try {
-    const userId = jwt.verify(jwtGraphqlToken, process.env.jwt_secret);
+    const userId = jwt.verify(jwtGraphqlToken, process.env.jwt_secret || "");
     const userIdValue =
       typeof userId === "string" ? userId : JSON.stringify(userId);
     await client.set(jwtGraphqlToken, userIdValue);
@@ -27,13 +27,12 @@ export async function addSessionOnRedis(jwtGraphqlToken: string) {
     throw new Error("error while Adding session on redis ");
   }
 }
-export async function checkSessionOnRedis(jwtGraphqlToken: string) {
+export async function checkSessionOnRedis(jwtGraphqlToken) {
   try {
     const userId = await client.get(jwtGraphqlToken);
     return userId;
   } catch (error) {
     console.log("error in checksession on Redis ", error);
-
     throw new Error("errow while checking session on redis");
   }
 }

@@ -1,0 +1,17 @@
+{
+	"ulid": "01JDRE4TCMK475CCVSXVDKYHHB",
+	"minTime": 1732730400000,
+	"maxTime": 1732737600000,
+	"stats": {
+		"numSamples": 12747,
+		"numSeries": 61,
+		"numChunks": 123
+	},
+	"compaction": {
+		"level": 1,
+		"sources": [
+			"01JDRE4TCMK475CCVSXVDKYHHB"
+		]
+	},
+	"version": 1
+}

@@ -4,12 +4,13 @@ import {
   AuthenticationError,
 } from "apollo-server-errors";
 import jwt from "jsonwebtoken";
-import { addSessionOnRedis } from "../redis/index.js";
-import { isUserValid } from "../middleware/index.js";
-import { getUserDetails } from "../microservice-api-call/user-service.js";
-import { getAllOrderDetails } from "../microservice-api-call/order-service.js";
-import { getProductDetails } from "../microservice-api-call/product-service.js";
-import { circuitBreaker } from "../circuit-breaker/index.js";
+import { addSessionOnRedis } from "../redis/index";
+import { isUserValid } from "../middleware/index";
+import { getUserDetails } from "../microservice-api-call/user-service";
+import { getAllOrderDetails } from "../microservice-api-call/order-service";
+import { getProductDetails } from "../microservice-api-call/product-service";
+import { circuitBreaker } from "../circuit-breaker/index";
+import { Request } from "express";
 import axios from "axios";
 const resolvers = {
   Query: {
@@ -103,8 +104,9 @@ const resolvers = {
           //   console.log("userDetails ", response.data.user.id);
           //   console.log("jwt secret ", process.env.jwt_secret);
           console.log("userID "), userID;
-          const token = jwt.sign(userID, process.env.jwt_secret);
+          const token = jwt.sign(userID, process.env.jwt_secret || "");
           console.log("jwt ", token);
+          //@ts-ignore
           res.cookie("jwtGraphqlToken", token, {
             httpOnly: true,
             secure: process.env.NODE_ENV === "production",

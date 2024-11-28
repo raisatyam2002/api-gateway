@@ -4,6 +4,8 @@
   "main": "index.js",
   "scripts": {
     "compile": "npx tsc",
+    "fix-imports": "node fix-extensions.js",
+    "build": "npm run compile && npm run fix-imports",
     "start": "npm run compile && cp ./src/schema.graphql ./dist/schema.graphql && node ./dist/index.js"
   },
   "keywords": [],
@@ -26,9 +28,11 @@
     "express": "^4.21.1",
     "graphql": "^16.9.0",
     "jsonwebtoken": "^9.0.2",
-    "prom-client": "^15.1.3"
+    "prom-client": "^15.1.3",
+    "replace-in-file": "^8.2.0"
   },
   "devDependencies": {
+    "tsc-alias": "^1.8.10",
     "typescript": "^5.6.3"
   }
 }
