@@ -9,7 +9,7 @@ export async function getProductDetails(userId: string, data: any) {
       throw new Error(res.data.message);
     }
   } catch (error: any) {
-    console.log("error in product service ", error);
+    console.log("error in product service ", error.message);
     data.fallbackMessages.push({
       service: "product-service",
       message:

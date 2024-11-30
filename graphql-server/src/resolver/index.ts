@@ -9,7 +9,7 @@ import { isUserValid } from "../middleware/index";
 import { getUserDetails } from "../microservice-api-call/user-service";
 import { getAllOrderDetails } from "../microservice-api-call/order-service";
 import { getProductDetails } from "../microservice-api-call/product-service";
-import { circuitBreaker } from "../circuit-breaker/index";
+import { circuitBreaker, userCircuitBreaker } from "../circuit-breaker/index";
 import { Request } from "express";
 import axios from "axios";
 const resolvers = {
@@ -43,7 +43,7 @@ const resolvers = {
           fallbackMessages: [],
         };
         // user micro-service
-        await circuitBreaker(
+        await userCircuitBreaker(
           "user-service",
           getUserDetails,
           userId,

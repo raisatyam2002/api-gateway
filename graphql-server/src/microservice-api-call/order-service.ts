@@ -11,7 +11,7 @@ export async function getAllOrderDetails(userId: string, data: any) {
       throw new Error(res.data.message);
     }
   } catch (error: any) {
-    console.log("error in order service ", error);
+    console.log("error in order service ", error.message);
     data.fallbackMessages.push({
       service: "order-service",
       message:
